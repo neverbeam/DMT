@@ -1,0 +1,11 @@
+DONE
+- Pandas dataframe with correct headings
+
+NEEDED
+- check if "," in data does not cause troubles for us, maybe remove them from data
+- set wrongly filled in fields to NaN or maybe something nicer to create difference with not filled in fields
+- parse course into finite set of possible courses
+- parse birthday into standard datetime
+- parse sleeptime into standard datetime
+- parse 100 dollar question into floats
+- parse random number question into ints
