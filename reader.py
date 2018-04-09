@@ -155,3 +155,7 @@ plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='
 plt.xlabel("num neighbors")
 plt.ylabel("count")
 plt.show()
+
+# Parse machine learning experience
+plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(3), align='left')
+plt.show()
