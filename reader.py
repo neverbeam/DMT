@@ -1,11 +1,48 @@
 import pandas as pd
 import datetime
+import numpy as np
+import matplotlib.pyplot as plt
 
 def time(data):
     pass
 
-def programme(data):
-    pass
+def programme(value):
+    value = value.lower()
+    course = "Other"
+    for business_string in ["b"]:
+        if business_string in value:
+            course = "BUS"
+    for cs_string in ["cs", "computer"]:
+        if cs_string in value:
+            course = "CS"
+    for cls_string in ["cls", "computational"]:
+        if cls_string in value:
+            course = "CLS"
+    for ai_string in ["ai", "artificial", "intelligence"]:
+        if ai_string in value:
+            course = "AI"
+    for business_string in ["business"]:
+        if business_string in value:
+            course = "BUS"
+    for ba_string in ["ba","business analytics"]:
+        if ba_string in value:
+            course = "BA"
+    for bio_string in ["bio"]:
+        if bio_string in value:
+            course = "BIO"
+    for math_string in ["math"]:
+        if math_string in value:
+            course = "MATH"
+    for phy_string in ["physics"]:
+        if phy_string in value:
+            course = "PHY"
+    for eco_string in ["econo"]:
+        if eco_string in value:
+            course = "ECO"
+    for phd_string in ["phd"]:
+        if phd_string in value:
+            course = "PhD"
+    return course
 
 def information_retreaval(data):
     pass
@@ -66,7 +103,15 @@ def money(data):
     pass
 
 def random_num(data):
-    pass
+    """Strips the random numbers into domain [0,10] or None otherwise"""
+    try:
+        number = int(data)
+        if number <= 10 and number >= 0:
+            return number
+        else:
+            return None
+    except ValueError:
+        return None
 
 def bedtime(data):
     pass
@@ -79,3 +124,19 @@ headers = ["time", "programme", "machine_learning", "information_retreaval",
 data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
 data.birthday = data.birthday.apply(birthday)
+
+# parse programme
+data["programme"] = data["programme"].apply(programme)
+# programme plot
+plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
+plt.xlabel("programme")
+plt.ylabel("count")
+plt.show()
+
+# Time stripping
+data["random_num"] = data["random_num"].apply(random_num)
+# time plot
+plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
+plt.xlabel("random number")
+plt.ylabel("count")
+plt.show()
