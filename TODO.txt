@@ -1,5 +1,6 @@
 DONE
 - Pandas dataframe with correct headings
+- parse random number question into ints
 
 NEEDED
 - check if "," in data does not cause troubles for us, maybe remove them from data
@@ -8,4 +9,3 @@ NEEDED
 - parse birthday into standard datetime
 - parse sleeptime into standard datetime
 - parse 100 dollar question into floats
-- parse random number question into ints

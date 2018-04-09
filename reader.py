@@ -74,7 +74,15 @@ def money(data):
     pass
 
 def random_num(data):
-    pass
+    """Strips the random numbers into domain [0,10] or None otherwise"""
+    try:
+        number = int(data)
+        if number <= 10 and number >= 0:
+            return number
+        else:
+            return None
+    except ValueError:
+        return None
 
 def bedtime(data):
     pass
@@ -87,7 +95,17 @@ headers = ["time", "programme", "machine_learning", "information_retreaval",
 data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
 # parse programme
-data["programme-parsed"] = data["programme"].apply(programme)
-print(data[["programme","programme-parsed"]].to_string())
-plt.hist(data["programme-parsed"], bins=range(len(np.unique(data["programme-parsed"]))+1), align="left", rwidth=0.8)
+data["programme"] = data["programme"].apply(programme)
+# programme plot
+plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
+plt.xlabel("programme")
+plt.ylabel("count")
+plt.show()
+
+# Time stripping
+data["random_num"] = data["random_num"].apply(random_num)
+# time plot
+plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
+plt.xlabel("random number")
+plt.ylabel("count")
 plt.show()
