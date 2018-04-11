@@ -70,8 +70,8 @@ def birthday(value):
     for delimiter in ["/","-","."," "]:
         try:
             entry_1, entry_2, entry_3 = value.split(delimiter)
-        
-            
+
+
             # indentify year
             if int(entry_1) > 1960 and int(entry_1) < 2000:
                 year = int(entry_1)
@@ -79,14 +79,14 @@ def birthday(value):
             elif int(entry_3) > 1960 and int(entry_3) < 2000:
                 year = int(entry_3)
                 day = int(entry_1)
-                
+
             # parse month
             for i in range(len(months)):
                 for alt in months[i]:
                     if alt in entry_2.lower():
                         return datetime.date(year, i+1, day)
             month = int(entry_2)
-            
+
             return datetime.date(year, month, day)
 
         except:
@@ -94,7 +94,15 @@ def birthday(value):
     return None
 
 def neighbors(data):
-    pass
+    """Strips the random numbers into domain [0,10] or None otherwise"""
+    try:
+        number = int(data)
+        if number <= 8 and number >= 0:
+            return number
+        else:
+            return None
+    except ValueError:
+        return None
 
 def standup(data):
     pass
@@ -140,4 +148,15 @@ data["random_num"] = data["random_num"].apply(random_num)
 plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
 plt.xlabel("random number")
 plt.ylabel("count")
+plt.show()
+
+# Parse neighbors
+data["neighbors"] = data["neighbors"].apply(neighbors)
+plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='left', rwidth=0.8)
+plt.xlabel("num neighbors")
+plt.ylabel("count")
+plt.show()
+
+# Parse machine learning experience
+plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(3), align='left')
 plt.show()
