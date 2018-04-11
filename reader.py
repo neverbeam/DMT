@@ -124,6 +124,7 @@ headers = ["time", "programme", "machine_learning", "information_retreaval",
 data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
 data.birthday = data.birthday.apply(birthday)
+print(data.birthday)
 
 # parse programme
 data["programme"] = data["programme"].apply(programme)
