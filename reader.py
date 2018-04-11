@@ -2,6 +2,8 @@ import pandas as pd
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
 
 ##################################################
 # parsing functions for each column
@@ -48,7 +50,7 @@ def programme(value):
             course = "PhD"
     return course
 
-def information_retreaval(value):
+def information_retrieval(value):
     pass
 
 def machine_learning(value):
@@ -182,12 +184,24 @@ def plot_stats(data):
     plt.show()
 
 
-def predict_programme(data):
-    pass
+# split the data into a learn and test set
+def split_data(data, p=0.5):
+    shuffled_data = data.sample(frac=1).reset_index(drop=True)
+    split_at = int(p*len(data))
+    learn = shuffled_data[:split_at].reset_index(drop=True)
+    test = shuffled_data[split_at:].reset_index(drop=True)
+    return learn, test
 
+
+# use naive bayes to predict the programme based on previous courses
+def learn_programme(learn_data):
+    # use X as the predictors and Y as what to predict
+    X = learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].as_matrix()
+    Y = learn_data["programme"].as_matrix()
+    
 
 if __name__ == '__main__':
-    headers = ["time", "programme", "machine_learning", "information_retreaval",
+    headers = ["time", "programme", "machine_learning", "information_retrieval",
     "statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
     data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
@@ -195,4 +209,6 @@ if __name__ == '__main__':
 
     # plot_stats(data)
 
-    predict_programme(data)
+    learn_data, test_data = split_data(data)
+
+    learn_programme(data)
