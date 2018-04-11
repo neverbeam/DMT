@@ -3,7 +3,11 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-def time(data):
+##################################################
+# parsing functions for each column
+##################################################
+
+def time(value):
     pass
 
 def programme(value):
@@ -44,22 +48,22 @@ def programme(value):
             course = "PhD"
     return course
 
-def information_retreaval(data):
+def information_retreaval(value):
     pass
 
-def machine_learning(data):
+def machine_learning(value):
     pass
 
-def statistics_course(data):
+def statistics_course(value):
     pass
 
-def database_course(data):
+def database_course(value):
     pass
 
-def gender(data):
+def gender(value):
     pass
 
-def chocolate(data):
+def chocolate(value):
     pass
 
 def birthday(value):
@@ -93,10 +97,10 @@ def birthday(value):
             pass
     return None
 
-def neighbors(data):
+def neighbors(value):
     """Strips the random numbers into domain [0,10] or None otherwise"""
     try:
-        number = int(data)
+        number = int(value)
         if number <= 8 and number >= 0:
             return number
         else:
@@ -104,16 +108,16 @@ def neighbors(data):
     except ValueError:
         return None
 
-def standup(data):
+def standup(value):
     pass
 
-def money(data):
+def money(value):
     pass
 
-def random_num(data):
+def random_num(value):
     """Strips the random numbers into domain [0,10] or None otherwise"""
     try:
-        number = int(data)
+        number = int(value)
         if number <= 10 and number >= 0:
             return number
         else:
@@ -121,42 +125,74 @@ def random_num(data):
     except ValueError:
         return None
 
-def bedtime(data):
+def bedtime(value):
     pass
 
-def goodday(data1, data2):
+def goodday1(value):
     pass
 
-headers = ["time", "programme", "machine_learning", "information_retreaval",
-"statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
-data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
+def goodday2(value):
+    pass
 
-data.birthday = data.birthday.apply(birthday)
-print(data.birthday)
 
-# parse programme
-data["programme"] = data["programme"].apply(programme)
-# programme plot
-plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
-plt.xlabel("programme")
-plt.ylabel("count")
-plt.show()
 
-# Time stripping
-data["random_num"] = data["random_num"].apply(random_num)
-# time plot
-plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
-plt.xlabel("random number")
-plt.ylabel("count")
-plt.show()
 
-# Parse neighbors
-data["neighbors"] = data["neighbors"].apply(neighbors)
-plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='left', rwidth=0.8)
-plt.xlabel("num neighbors")
-plt.ylabel("count")
-plt.show()
+############################################################
+#  Bigger functions
+############################################################
 
-# Parse machine learning experience
-plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(3), align='left')
-plt.show()
+
+def parse_data(data):
+    # parse birthday
+    data.birthday = data.birthday.apply(birthday)
+
+    # parse programme
+    data["programme"] = data["programme"].apply(programme)
+
+    # Random number stripping
+    data["random_num"] = data["random_num"].apply(random_num)
+
+    # Parse neighbors
+    data["neighbors"] = data["neighbors"].apply(neighbors)
+
+    # Parse machine learning experience
+
+
+def plot_stats(data):
+    # plot programme
+    plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
+    plt.xlabel("programme")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot random number
+    plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
+    plt.xlabel("random number")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot neighbors
+    plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='left', rwidth=0.8)
+    plt.xlabel("num neighbors")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot not null machine learning
+    plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(4), align='left')
+    plt.show()
+
+
+def predict_programme(data):
+    pass
+
+
+if __name__ == '__main__':
+    headers = ["time", "programme", "machine_learning", "information_retreaval",
+    "statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
+    data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
+
+    parse_data(data)
+
+    # plot_stats(data)
+
+    predict_programme(data)
