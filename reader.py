@@ -113,7 +113,8 @@ def random_num(data):
     except ValueError:
         return None
 
-def bedtime(data):
+def bedtime(value):
+    
     pass
 
 def goodday(data1, data2):
@@ -140,3 +141,5 @@ plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align
 plt.xlabel("random number")
 plt.ylabel("count")
 plt.show()
+
+print(data.bedtime)
