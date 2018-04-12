@@ -2,8 +2,14 @@ import pandas as pd
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
 
-def time(data):
+
+# parsing functions for each column
+
+
+def time(value):
     pass
 
 def programme(value):
@@ -44,22 +50,22 @@ def programme(value):
             course = "PhD"
     return course
 
-def information_retreaval(data):
+def information_retrieval(value):
     pass
 
-def machine_learning(data):
+def machine_learning(value):
     pass
 
-def statistics_course(data):
+def statistics_course(value):
     pass
 
-def database_course(data):
+def database_course(value):
     pass
 
-def gender(data):
+def gender(value):
     pass
 
-def chocolate(data):
+def chocolate(value):
     pass
 
 def birthday(value):
@@ -70,8 +76,8 @@ def birthday(value):
     for delimiter in ["/","-","."," "]:
         try:
             entry_1, entry_2, entry_3 = value.split(delimiter)
-        
-            
+
+
             # indentify year
             if int(entry_1) > 1960 and int(entry_1) < 2000:
                 year = int(entry_1)
@@ -79,33 +85,41 @@ def birthday(value):
             elif int(entry_3) > 1960 and int(entry_3) < 2000:
                 year = int(entry_3)
                 day = int(entry_1)
-                
+
             # parse month
             for i in range(len(months)):
                 for alt in months[i]:
                     if alt in entry_2.lower():
                         return datetime.date(year, i+1, day)
             month = int(entry_2)
-            
+
             return datetime.date(year, month, day)
 
         except:
             pass
     return None
 
-def neighbors(data):
-    pass
-
-def standup(data):
-    pass
-
-def money(data):
-    pass
-
-def random_num(data):
+def neighbors(value):
     """Strips the random numbers into domain [0,10] or None otherwise"""
     try:
-        number = int(data)
+        number = int(value)
+        if number <= 8 and number >= 0:
+            return number
+        else:
+            return None
+    except ValueError:
+        return None
+
+def standup(value):
+    pass
+
+def money(value):
+    pass
+
+def random_num(value):
+    """Strips the random numbers into domain [0,10] or None otherwise"""
+    try:
+        number = int(value)
         if number <= 10 and number >= 0:
             return number
         else:
@@ -114,10 +128,13 @@ def random_num(data):
         return None
 
 def bedtime(value):
-    
+
     pass
 
-def goodday(data1, data2):
+def goodday1(value):
+    pass
+
+def goodday2(value):
     pass
 
 headers = ["time", "programme", "machine_learning", "information_retreaval",
@@ -143,3 +160,79 @@ plt.ylabel("count")
 plt.show()
 
 print(data.bedtime)
+
+
+
+
+#  Bigger functions
+
+
+
+def parse_data(data):
+    # parse birthday
+    data.birthday = data.birthday.apply(birthday)
+
+    # parse programme
+    data["programme"] = data["programme"].apply(programme)
+
+    # Random number stripping
+    data["random_num"] = data["random_num"].apply(random_num)
+
+    # Parse neighbors
+    data["neighbors"] = data["neighbors"].apply(neighbors)
+
+    # Parse machine learning experience
+
+
+def plot_stats(data):
+    # plot programme
+    plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
+    plt.xlabel("programme")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot random number
+    plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
+    plt.xlabel("random number")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot neighbors
+    plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='left', rwidth=0.8)
+    plt.xlabel("num neighbors")
+    plt.ylabel("count")
+    plt.show()
+
+    # plot not null machine learning
+    plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(4), align='left')
+    plt.show()
+
+
+# split the data into a learn and test set
+def split_data(data, p=0.5):
+    shuffled_data = data.sample(frac=1).reset_index(drop=True)
+    split_at = int(p*len(data))
+    learn = shuffled_data[:split_at].reset_index(drop=True)
+    test = shuffled_data[split_at:].reset_index(drop=True)
+    return learn, test
+
+
+# use naive bayes to predict the programme based on previous courses
+def learn_programme(learn_data):
+    # use X as the predictors and Y as what to predict
+    X = learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].as_matrix()
+    Y = learn_data["programme"].as_matrix()
+    
+
+if __name__ == '__main__':
+    headers = ["time", "programme", "machine_learning", "information_retrieval",
+    "statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
+    data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
+
+    parse_data(data)
+
+    # plot_stats(data)
+
+    learn_data, test_data = split_data(data)
+
+    learn_programme(data)
