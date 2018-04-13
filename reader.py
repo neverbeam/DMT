@@ -10,7 +10,10 @@ from sklearn.naive_bayes import GaussianNB
 
 
 def time(value):
-    pass
+    date, time = value.split(" ")
+    day, month, year = map(int, date.split("/"))
+    hour, min, sec = map(int, time.split(":"))
+    return datetime.datetime(year, month, day, hour, min, sec)
 
 def programme(value):
     value = value.lower()
@@ -128,8 +131,44 @@ def random_num(value):
         return None
 
 def bedtime(value):
-
-    pass
+    day, month, year = 4, 5, 2018
+    if value.isdigit():
+        if len(value) == 4:
+            hours = int(value[0:2])
+            mins = int(value[2:4])         
+        elif len(value) <= 2:
+            hours = int(value)%24
+            mins = 0
+        else: return None
+        if hours > 7: day = day-1
+        return datetime.datetime(year, month, day, hours, mins)
+    try:
+        entry_1, entry_2 = value.split(":")
+        hours = int(entry_1)%24
+        mins = int(''.join([i for i in entry_2 if i.isdigit()]))
+        if hours > 7: day = day-1
+        return datetime.datetime(year, month, day, hours, mins)
+    except:
+        pass
+    try:
+        entry_1, entry_2 = value.split(".")
+        hours = int(entry_1)%24
+        mins = ''.join([i for i in entry_2 if i.isdigit()])
+        mins = int(mins) if entry_2[0] != '0' else int(mins)*10
+        if hours > 7: day = day-1
+        return datetime.datetime(year, month, day, hours, mins)
+    except:
+        pass
+    try:
+        entry_1, entry_2 = value.split(" ")
+        if entry_1.isdigit():
+            hours = int(entry_1)%24
+            mins = int(entry_2) if entry_2.isdigit() else 0
+            if hours > 7: day = day-1
+            return datetime.datetime(year, month, day, hours, mins)
+    except:
+        pass
+    return None
 
 def goodday1(value):
     pass
@@ -141,7 +180,6 @@ headers = ["time", "programme", "machine_learning", "information_retreaval",
 "statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
 data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
-data.birthday = data.birthday.apply(birthday)
 
 # parse programme
 data["programme"] = data["programme"].apply(programme)
@@ -159,16 +197,16 @@ plt.xlabel("random number")
 plt.ylabel("count")
 plt.show()
 
-print(data.bedtime)
-
-
-
-
 #  Bigger functions
 
 
-
 def parse_data(data):
+    # parse time
+    data.time = data.time.apply(time)
+    
+    # parse time
+    data.bedtime = data.bedtime.apply(bedtime)
+    
     # parse birthday
     data.birthday = data.birthday.apply(birthday)
 
