@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn import preprocessing
 
 
 # parsing functions for each column
@@ -223,26 +224,67 @@ def parse_data(data):
 
 
 def plot_stats(data):
-    # plot programme
+    """Make a distribution plot for every attribute"""
+    # Plot programme.
     plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
     plt.xlabel("programme")
     plt.ylabel("count")
     plt.show()
 
-    # plot random number
+    # Plot random number.
     plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
     plt.xlabel("random number")
     plt.ylabel("count")
     plt.show()
 
-    # plot neighbors
+    # Plot neighbors.
     plt.hist(data[data["neighbors"].notnull()]["neighbors"], bins=range(10), align='left', rwidth=0.8)
     plt.xlabel("num neighbors")
     plt.ylabel("count")
     plt.show()
 
-    # plot not null machine learning
+    # Plot not null machine learning.
     plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(4), align='left')
+    plt.xlabel("Machine learning experience")
+    plt.ylabel("count")
+    plt.show()
+    
+    # Plot statistic experience.
+    plt.hist(data[data["statistics_course"].notnull()]["statistics_course"], bins=range(4), align='left')
+    plt.xlabel("statistics experience")
+    plt.ylabel("count")
+    plt.show()
+    
+    # Plot information course experience.
+    plt.hist(data[data["information_retrieval"].notnull()]["information_retrieval"], bins=range(4), align='left')
+    plt.xlabel("information retrieval experience")
+    plt.ylabel("count")
+    plt.show()
+
+    # Plot databases experience.
+    plt.hist(data[data["database_course"].notnull()]["database_course"], bins=range(4), align='left')
+    plt.xlabel("database experience")
+    plt.ylabel("count")
+    plt.show()
+
+    # Plot gender.
+    plt.hist(data[data["gender"].notnull()]["gender"], bins=range(4), align='left')
+    plt.xlabel("gender")
+    plt.ylabel("count")
+    plt.show()
+
+    # Plot Choco evaluation.
+    plt.hist(data[data["chocolate"].notnull()]["chocolate"], bins=range(6), align='left')
+    locs, labels = plt.xticks()
+    plt.setp(labels, rotation=65)
+    plt.xlabel("Chocolate evaltuion")
+    plt.ylabel("count")
+    plt.show()
+    
+    # Plot standup.
+    plt.hist(data[data["standup"].notnull()]["standup"], bins=range(4), align='left')
+    plt.xlabel("Did you standup?")
+    plt.ylabel("count")
     plt.show()
 
 
@@ -257,10 +299,62 @@ def split_data(data, p=0.5):
 
 # use naive bayes to predict the programme based on previous courses
 def learn_programme(learn_data):
-    # use X as the predictors and Y as what to predict
-    X = learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].as_matrix()
-    Y = learn_data["programme"].as_matrix()
+    """Train naive bayes to predict the programme based on previous courses."""
+    # Transformation of strings to number for learning.
+    encoder = preprocessing.LabelEncoder()
+    a = np.ravel(learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course", "programme"]])
+    encoder.fit_transform(a)
+
+    # Use X as the predictors and Y as what to predict.
+    X = learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].apply(encoder.transform)
+    Y = encoder.transform(learn_data["programme"])
+    learner = GaussianNB()
+    learner.fit(X,Y)
+      
+    return learner, encoder
     
+def predict_programme(predict_data, learner, encoder):
+    """ Use naive bayes to predict the programme based on previous courses."""
+    #Encode the predictons 
+    encoded_data = predict_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].apply(encoder.transform)
+    
+    prediction = learner.predict(encoded_data)
+    prediction = encoder.inverse_transform(prediction)
+        
+    return prediction
+
+def compare(data, prediction):
+    """Compare the prediction and the actual data.""" 
+    # Explicitly cast the datatypes to numpy arrays.
+    counter = np.sum(np.array(data) == np.array(prediction))
+            
+    print("Number of correct guesses", counter)
+
+def create_tree(learn_data):
+    """ Create a decision tree for predicting programme based on prevous courses. """
+    grandtree = DecisionTreeClassifier()
+    
+    # Transformation of strings to number for learning.
+    encoder = preprocessing.LabelEncoder()
+    a = np.ravel(learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course", "programme"]])
+    encoder.fit_transform(a)
+    
+    # Use X as the predictors and Y as what to predict.
+    X = learn_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].apply(encoder.transform)
+    Y = encoder.transform(learn_data["programme"])
+    
+    grandtree.fit(X, Y)
+    return grandtree, encoder
+    
+def predict_programme_tree(test_data, tree, encoder):
+    """ Use a decision tree for predicting programme based on prevous courses. """
+    test_data = test_data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].apply(encoder.transform)
+    
+    prediction = tree.predict(test_data)
+    prediction = encoder.inverse_transform(prediction)
+    
+    return prediction
+
 
 if __name__ == '__main__':
     headers = ["time", "programme", "machine_learning", "information_retrieval",
@@ -269,8 +363,16 @@ if __name__ == '__main__':
 
     parse_data(data)
 
-    # plot_stats(data)
+    plot_stats(data)
 
     learn_data, test_data = split_data(data)
 
-    learn_programme(data)
+    # Naive bayes
+    learner, encoder = learn_programme(learn_data)
+    prediction = predict_programme(test_data, learner, encoder)
+
+    # Decision tree
+    tree, encoder = create_tree(learn_data)
+    prediction = predict_programme_tree(test_data, tree, encoder)
+
+    compare(test_data["programme"], prediction)
