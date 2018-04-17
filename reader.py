@@ -141,13 +141,17 @@ def bedtime(value):
             hours = int(value)%24
             mins = 0
         else: return None
-        if hours > 7: day = day-1
+        if hours >= 6 and hours < 12: day, hours = day-1, hours+12
+        elif hours >= 12 and hours < 18: hours = (hours+12)%24
+        elif hours >= 18: day = day-1
         return datetime.datetime(year, month, day, hours, mins)
     try:
         entry_1, entry_2 = value.split(":")
         hours = int(entry_1)%24
         mins = int(''.join([i for i in entry_2 if i.isdigit()]))
-        if hours > 7: day = day-1
+        if hours > 6 and hours <= 12: day, hours = day-1, hours+12
+        elif hours >= 12 and hours < 18: hours = (hours+12)%24
+        elif hours >= 18: day = day-1
         return datetime.datetime(year, month, day, hours, mins)
     except:
         pass
@@ -156,7 +160,9 @@ def bedtime(value):
         hours = int(entry_1)%24
         mins = ''.join([i for i in entry_2 if i.isdigit()])
         mins = int(mins) if entry_2[0] != '0' else int(mins)*10
-        if hours > 7: day = day-1
+        if hours > 6 and hours <= 12: day, hours = day-1, hours+12
+        elif hours >= 12 and hours < 18: hours = (hours+12)%24
+        elif hours >= 18: day = day-1
         return datetime.datetime(year, month, day, hours, mins)
     except:
         pass
@@ -165,7 +171,9 @@ def bedtime(value):
         if entry_1.isdigit():
             hours = int(entry_1)%24
             mins = int(entry_2) if entry_2.isdigit() else 0
-            if hours > 7: day = day-1
+            if hours > 6 and hours <= 12: day, hours = day-1, hours+12
+            elif hours >= 12 and hours < 18: hours = (hours+12)%24
+            elif hours >= 18: day = day-1
             return datetime.datetime(year, month, day, hours, mins)
     except:
         pass
@@ -244,33 +252,44 @@ def plot_stats(data):
     plt.show()
 
     # Plot not null machine learning.
-    plt.hist(data[data["machine_learning"].notnull()]["machine_learning"], bins=range(4), align='left')
-    plt.xlabel("Machine learning experience")
-    plt.ylabel("count")
+    values = data.machine_learning.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Machine learning experience")
     plt.show()
     
     # Plot statistic experience.
-    plt.hist(data[data["statistics_course"].notnull()]["statistics_course"], bins=range(4), align='left')
-    plt.xlabel("statistics experience")
-    plt.ylabel("count")
+    values = data.statistics_course.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Statistics experience")
     plt.show()
     
     # Plot information course experience.
-    plt.hist(data[data["information_retrieval"].notnull()]["information_retrieval"], bins=range(4), align='left')
-    plt.xlabel("information retrieval experience")
-    plt.ylabel("count")
+    values = data.information_retrieval.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Information retrieval experience")
     plt.show()
 
     # Plot databases experience.
-    plt.hist(data[data["database_course"].notnull()]["database_course"], bins=range(4), align='left')
-    plt.xlabel("database experience")
-    plt.ylabel("count")
+    values = data.database_course.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Databases experience")
     plt.show()
 
     # Plot gender.
-    plt.hist(data[data["gender"].notnull()]["gender"], bins=range(4), align='left')
-    plt.xlabel("gender")
-    plt.ylabel("count")
+    values = data.gender.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Gender")
+    plt.show()
+    
+    # Plot bedtime.
+    dfb = pd.DataFrame({'bedtime':pd.to_datetime(data.bedtime)})
+    dfb.set_index('bedtime', drop=False, inplace=True)
+    dfb.groupby(pd.Grouper(freq='60Min')).count().plot(kind='bar')
     plt.show()
 
     # Plot Choco evaluation.
@@ -282,9 +301,10 @@ def plot_stats(data):
     plt.show()
     
     # Plot standup.
-    plt.hist(data[data["standup"].notnull()]["standup"], bins=range(4), align='left')
-    plt.xlabel("Did you standup?")
-    plt.ylabel("count")
+    values = data.standup.value_counts()
+    labels, sizes = values.index.values, values
+    plt.pie(sizes, labels=labels)
+    plt.title("Did you stand up?")
     plt.show()
 
 
