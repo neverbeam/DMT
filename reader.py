@@ -3,20 +3,21 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn import preprocessing
+from sklearn.model_selection import cross_val_score
 
-
-# parsing functions for each column
 
 
 def time(value):
+    """ Parsing the time field."""
     date, time = value.split(" ")
     day, month, year = map(int, date.split("/"))
     hour, min, sec = map(int, time.split(":"))
     return datetime.datetime(year, month, day, hour, min, sec)
 
 def programme(value):
+    """ Parsing of the programme field."""
     value = value.lower()
     course = "Other"
     for business_string in ["b"]:
@@ -40,12 +41,12 @@ def programme(value):
     for bio_string in ["bio"]:
         if bio_string in value:
             course = "BIO"
-    for math_string in ["math"]:
-        if math_string in value:
-            course = "MATH"
-    for phy_string in ["physics"]:
-        if phy_string in value:
-            course = "PHY"
+#    for math_string in ["math"]:
+#        if math_string in value:
+#            course = "MATH"
+#    for phy_string in ["physics"]:
+#        if phy_string in value:
+#            course = "PHY"
     for eco_string in ["econo"]:
         if eco_string in value:
             course = "ECO"
@@ -73,7 +74,7 @@ def chocolate(value):
     pass
 
 def birthday(value):
-
+    """Parsing the birthday in the right format"""
     months = [["jan"],["feb"],["mar","maa"],["apr"],["may","mei"],["jun"],
              ["jul"],["aug"],["sep"],["oct","okt"],["nov"],["dec"]]
 
@@ -82,7 +83,7 @@ def birthday(value):
             entry_1, entry_2, entry_3 = value.split(delimiter)
 
 
-            # indentify year
+            # Indentify year.
             if int(entry_1) > 1960 and int(entry_1) < 2000:
                 year = int(entry_1)
                 day = int(entry_3)
@@ -90,7 +91,7 @@ def birthday(value):
                 year = int(entry_3)
                 day = int(entry_1)
 
-            # parse month
+            # Parse month.
             for i in range(len(months)):
                 for alt in months[i]:
                     if alt in entry_2.lower():
@@ -104,7 +105,7 @@ def birthday(value):
     return None
 
 def neighbors(value):
-    """Strips the random numbers into domain [0,10] or None otherwise"""
+    """Strips the random numbers into domain [0,8] or None otherwise"""
     try:
         number = int(value)
         if number <= 8 and number >= 0:
@@ -121,7 +122,7 @@ def money(value):
     pass
 
 def random_num(value):
-    """Strips the random numbers into domain [0,10] or None otherwise"""
+    """Strips the random numbers into domain [0,10] or None otherwise."""
     try:
         number = int(value)
         if number <= 10 and number >= 0:
@@ -132,6 +133,7 @@ def random_num(value):
         return None
 
 def bedtime(value):
+    """ Parse the bedtime in day month year format. """
     day, month, year = 4, 5, 2018
     if value.isdigit():
         if len(value) == 4:
@@ -185,41 +187,20 @@ def goodday1(value):
 def goodday2(value):
     pass
 
-headers = ["time", "programme", "machine_learning", "information_retreaval",
-"statistics_course", "database_course", "gender", "chocolate", "birthday", "neighbors", "standup", "money", "random_num", "bedtime", "goodday1", "goodday2" ]
-data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
-
-
-# parse programme
-data["programme"] = data["programme"].apply(programme)
-# programme plot
-plt.hist(data["programme"], bins=range(len(np.unique(data["programme"]))+1), align="left", rwidth=0.8)
-plt.xlabel("programme")
-plt.ylabel("count")
-plt.show()
-
-# Time stripping
-data["random_num"] = data["random_num"].apply(random_num)
-# time plot
-plt.hist(data[data["random_num"].notnull()]["random_num"], bins=range(12), align='left', rwidth=0.8)
-plt.xlabel("random number")
-plt.ylabel("count")
-plt.show()
-
-#  Bigger functions
-
 
 def parse_data(data):
-    # parse time
+    """ Call a parsing function whenever the column needs parsing."""
+
+    # Parse time
     data.time = data.time.apply(time)
     
-    # parse time
+    # Parse bed-time
     data.bedtime = data.bedtime.apply(bedtime)
     
-    # parse birthday
+    # Parse birthday
     data.birthday = data.birthday.apply(birthday)
 
-    # parse programme
+    # Parse programme
     data["programme"] = data["programme"].apply(programme)
 
     # Random number stripping
@@ -228,7 +209,6 @@ def parse_data(data):
     # Parse neighbors
     data["neighbors"] = data["neighbors"].apply(neighbors)
 
-    # Parse machine learning experience
 
 
 def plot_stats(data):
@@ -308,8 +288,8 @@ def plot_stats(data):
     plt.show()
 
 
-# split the data into a learn and test set
 def split_data(data, p=0.5):
+    """Split the data into a learn and test set."""
     shuffled_data = data.sample(frac=1).reset_index(drop=True)
     split_at = int(p*len(data))
     learn = shuffled_data[:split_at].reset_index(drop=True)
@@ -317,7 +297,6 @@ def split_data(data, p=0.5):
     return learn, test
 
 
-# use naive bayes to predict the programme based on previous courses
 def learn_programme(learn_data):
     """Train naive bayes to predict the programme based on previous courses."""
     # Transformation of strings to number for learning.
@@ -375,6 +354,24 @@ def predict_programme_tree(test_data, tree, encoder):
     
     return prediction
 
+def cross_validation(data):
+    """ Use a decision tree and naive bayes to predict programme based on previous courses 
+    with k-fold cross validation"""
+    # Encode strings to int.
+    encoder = preprocessing.LabelEncoder()
+    encode_data = np.ravel(data[["machine_learning", "information_retrieval", "statistics_course", "database_course", "programme"]])
+    encoder.fit_transform(encode_data)
+    
+    X = data[["machine_learning", "information_retrieval", "statistics_course", "database_course"]].apply(encoder.transform)    
+    Y = encoder.transform(data["programme"])
+    # Naive bayes to predict programme.
+    learner = BernoulliNB()
+    scores = cross_val_score(learner, X, Y, cv=4)
+    print ("Accuracy Naive Bayes Bernoulli", scores.mean())
+    learner = DecisionTreeClassifier(criterion = "entropy")
+    # Decision tree to predict programme.
+    scores = cross_val_score(learner, X, Y, cv=4)
+    print ("Accuracy decision tree ", scores.mean())
 
 if __name__ == '__main__':
     headers = ["time", "programme", "machine_learning", "information_retrieval",
@@ -387,12 +384,12 @@ if __name__ == '__main__':
 
     learn_data, test_data = split_data(data)
 
-    # Naive bayes
-    learner, encoder = learn_programme(learn_data)
-    prediction = predict_programme(test_data, learner, encoder)
+#    # Naive bayes
+#    learner, encoder = learn_programme(learn_data)
+#    prediction = predict_programme(test_data, learner, encoder)
+#
+#    # Decision tree
+#    tree, encoder = create_tree(learn_data)
+#    prediction = predict_programme_tree(test_data, tree, encoder)
 
-    # Decision tree
-    tree, encoder = create_tree(learn_data)
-    prediction = predict_programme_tree(test_data, tree, encoder)
-
-    compare(test_data["programme"], prediction)
+    cross_validation(data)
