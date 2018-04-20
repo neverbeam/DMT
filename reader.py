@@ -2,6 +2,7 @@ import pandas as pd
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn import preprocessing
@@ -233,43 +234,51 @@ def plot_stats(data):
 
     # Plot not null machine learning.
     values = data.machine_learning.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["yes","no","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
+    plt.rcParams['lines.linewidth'] = 2
     plt.title("Machine learning experience")
     plt.show()
     
     # Plot statistic experience.
     values = data.statistics_course.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["yes","no","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
     plt.title("Statistics experience")
     plt.show()
     
     # Plot information course experience.
     values = data.information_retrieval.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["yes","no","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
     plt.title("Information retrieval experience")
     plt.show()
 
     # Plot databases experience.
     values = data.database_course.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["yes","no","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
     plt.title("Databases experience")
     plt.show()
 
     # Plot gender.
     values = data.gender.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["male","female","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
     plt.title("Gender")
     plt.show()
     
     # Plot bedtime.
     dfb = pd.DataFrame({'bedtime':pd.to_datetime(data.bedtime)})
     dfb.set_index('bedtime', drop=False, inplace=True)
-    dfb.groupby(pd.Grouper(freq='60Min')).count().plot(kind='bar')
+    vals = dfb.groupby(pd.Grouper(freq='60Min')).count()
+    hours = [int(pd.to_datetime(d).strftime('%H')) for d in vals.index.values]
+    labels = [str(h) + '-'+ str((h+1)%24) for h in hours]
+    counts = [int(i) for i in vals.bedtime]
+    plt.bar(range(11), counts)
+    plt.xticks(range(11), labels, rotation='30')
+    plt.xlabel('bedtime')
+    plt.ylabel('count')
     plt.show()
 
     # Plot Choco evaluation.
@@ -282,8 +291,8 @@ def plot_stats(data):
     
     # Plot standup.
     values = data.standup.value_counts()
-    labels, sizes = values.index.values, values
-    plt.pie(sizes, labels=labels)
+    labels, sizes = ["no","yes","?"], values
+    plt.pie(sizes, labels=labels,shadow=True, startangle=0, wedgeprops={"edgecolor":"k",'linewidth': 1})
     plt.title("Did you stand up?")
     plt.show()
 
@@ -379,8 +388,10 @@ if __name__ == '__main__':
     data = pd.read_csv('ODI-2018.csv', delimiter = ',', names = headers, skiprows = 2)
 
     parse_data(data)
+    
+    print(data)
 
-    plot_stats(data)
+    #plot_stats(data)
 
     learn_data, test_data = split_data(data)
 
