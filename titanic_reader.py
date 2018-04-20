@@ -2,7 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import GaussianNB, BernoulliNB
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn import preprocessing
 
 def age(value):
@@ -71,17 +73,17 @@ def split_data(data, p=0.5):
     return learn, test
 
 # use naive bayes to predict the programme based on previous courses
-def NB_learn_survive(learn_data, encoder, categories):
+def learn_survive(learn_data, encoder, algorithm, categories):
     """Train naive bayes to predict the programme based on previous courses."""
     # Use X as the predictors and Y as what to predict.
     X = learn_data[categories].apply(encoder.transform)
     Y = encoder.transform(learn_data["Survived"])
-    learner = GaussianNB()
+    learner = algorithm()
     learner.fit(X,Y)
       
     return learner
     
-def NB_predict_survive(predict_data, learner, encoder, categories):
+def predict_survive(predict_data, learner, encoder, categories):
     """ Use naive bayes to predict the programme based on previous courses."""
     #Encode the predictons 
     encoded_data = predict_data[categories].apply(encoder.transform)
@@ -91,49 +93,49 @@ def NB_predict_survive(predict_data, learner, encoder, categories):
         
     return prediction
 
-def DT_learn_survive(learn_data, encoder, categories):
-    """ Create a decision tree for predicting programme based on prevous courses. """
-    grandtree = DecisionTreeClassifier()
-    
-    # Use X as the predictors and Y as what to predict.
-    X = learn_data[categories].apply(encoder.transform)
-    Y = encoder.transform(learn_data["Survived"])
-    
-    grandtree.fit(X, Y)
-    return grandtree
-    
-def DT_predict_survive(test_data, tree, encoder, categories):
-    """ Use a decision tree for predicting programme based on prevous courses. """
-    test_data = test_data[categories].apply(encoder.transform)
-    
-    prediction = tree.predict(test_data)
-    prediction = encoder.inverse_transform(prediction)
-    
-    return prediction
-
 def prediction_results(data, prediction):
     """Compare the prediction and the actual data.""" 
     # Explicitly cast the datatypes to numpy arrays.
     counter = np.sum(np.array(data) == np.array(prediction))
     return counter
 
-def test_classifiers(data, encoder, N):
-    NB_res = []
-    DT_res = []
+def test_classifiers(data, encoder, categories, N):
+    algorithms = [GaussianNB, BernoulliNB, SVC, RandomForestClassifier, DecisionTreeClassifier]
+    algorithms_str = ["Gaussian Naive Bayes", "Bernoulli Naive Bayes", "Support Vector Machine",
+                        "Random Forest", "Decision Tree"]
+
+    algorithms_res = [[] for _ in range(len(algorithms))]
     for i in range(N):
         learn_data, test_data = split_data(data)
 
-        # Naive bayes
-        learner = NB_learn_survive(learn_data, encoder, categories)
-        prediction = NB_predict_survive(test_data, learner, encoder, categories)
-        NB_res.append(prediction_results(test_data["Survived"], prediction))
+        # test the different classification algorithms
+        for i in range(len(algorithms)):
+            learner = learn_survive(learn_data, encoder, algorithms[i], categories)
+            prediction = predict_survive(test_data, learner, encoder, categories)
+            algorithms_res[i].append(prediction_results(test_data["Survived"], prediction))
 
-        # Decision Tree
-        learner = DT_learn_survive(learn_data, encoder, categories)
-        prediction = DT_predict_survive(test_data, learner, encoder, categories)
-        DT_res.append(prediction_results(test_data["Survived"], prediction))
-    print("Naive Bayes accuracy: " + str(sum(NB_res)/len(test_data)/N*100) + "%")
-    print("Decision Tree accuracy: " + str(sum(DT_res)/len(test_data)/N*100) + "%")
+    for i in range(len(algorithms)):
+        print(algorithms_str[i] + " accuracy: " + str(sum(algorithms_res[i])/len(test_data)/N*100) + "%")
+
+def test_categories(data, encoder, algorithm, categories, N, total):
+    cats_res = [[] for _ in range(len(categories))]
+    for j in range(N):
+        learn_data, test_data = split_data(data)
+        for i in range(len(categories)):
+            # copy the categories
+            del_cats = list(categories)
+
+            # remove 1 category from the list
+            category = categories[i]
+            del del_cats[i]
+
+            learner = learn_survive(learn_data, encoder, algorithm, del_cats)
+            prediction = predict_survive(test_data, learner, encoder, del_cats)
+            cats_res[i].append(prediction_results(test_data["Survived"], prediction))
+
+    for i in range(len(categories)):
+        print(categories[i] + " when removed: " + str(total - sum(cats_res[i])/len(test_data)/N*100) + "%")
+
 
 if __name__ == '__main__':
     train_data = pd.read_csv('titanic_train.csv', delimiter = ',')
@@ -148,11 +150,13 @@ if __name__ == '__main__':
     encoder = create_encoder(train_data.append(test_data).fillna('1'), categories)
 
     # this checks whether NB or DT is better
-    # test_classifiers(train_data, encoder, 10)
+    # test_classifiers(train_data, encoder, categories, 1000)
+    # this checks which category is most influential
+    # test_categories(train_data, encoder, SVC, categories, 1000, 80.)
 
     # train classifier on train and apply it to test
-    classifier = DT_learn_survive(train_data, encoder, categories)
-    result = DT_predict_survive(test_data, classifier, encoder, categories)
-    conclusion = test_data[["PassengerId"]]
-    conclusion["Survived"] = result
-    conclusion.to_csv(path_or_buf="titanic_survivors.csv", index=False)
+    # classifier = learn_survive(train_data, encoder, RandomForestClassifier, categories)
+    # result = predict_survive(test_data, classifier, encoder, categories)
+    # conclusion = test_data[["PassengerId"]]
+    # conclusion["Survived"] = result
+    # conclusion.to_csv(path_or_buf="titanic_survivors.csv", index=False)
