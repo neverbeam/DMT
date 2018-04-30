@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 def column_to_pie(data, category):
     values = data[category].value_counts()
@@ -16,6 +17,19 @@ def parse_data(data, categories, show=False):
 
     return data
 
+def stripcompetition(item):
+    if item == "nan":
+        return 0
+    else:
+        return item
+    
+
+def changecompetition(data, categories):
+    for category in categories[-24:-3]:
+        data[category] = data[category].apply(stripcompetition)
+        
+    return data
+
 if __name__ == '__main__':
     train_data = pd.read_csv('training_set_VU_DM_2014_small.csv', delimiter = ',')
     test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
@@ -23,4 +37,8 @@ if __name__ == '__main__':
     # all column headers
     categories = list(train_data)
     # show em
-    train_data = parse_data(train_data, categories, True)
+    train_data = parse_data(train_data, categories)
+
+    train_data = changecompetition(train_data, categories)
+    print (train_data["comp2_rate"])
+    
