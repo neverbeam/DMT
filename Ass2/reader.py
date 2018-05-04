@@ -1,6 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
+
+def parse_date_time(value):
+    new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+    return new_val
 
 def column_to_pie(data, category):
     values = data[category].value_counts()
@@ -11,10 +16,12 @@ def column_to_pie(data, category):
 
 def parse_data(data, categories, show=False):
     for category in categories:
-        data[category] = data[category].astype(str)
+        # data[category] = data[category].astype(str)
         if show:
             column_to_pie(data, category)
 
+    data["date_time"] = data["date_time"].apply(parse_date_time)
+    
     return data
 
 def stripcompetition(item):
