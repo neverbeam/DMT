@@ -1,7 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 from datetime import datetime
+from sklearn import preprocessing
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -16,10 +18,15 @@ def column_to_pie(data, category):
 
 def parse_data(data, categories, show=False):
     for category in categories:
-        # data[category] = data[category].astype(str)
+        # count NaNs
+        num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data[category][0], float) else 0
+        if isinstance(data[category][0],float):
+            # set all NaNs to mean
+            data[category][np.isnan(data[category])] = np.mean(data[category])
+            # normalize
+            data[category] = preprocessing.normalize(data[category].reshape(1,-1),norm='l2').ravel()
         if show:
             column_to_pie(data, category)
-
     data["date_time"] = data["date_time"].apply(parse_date_time)
 
     return data
@@ -85,7 +92,7 @@ if __name__ == '__main__':
     # all column headers
     categories = list(train_data)
     # show em
-    train_data = parse_data(train_data, categories, True)
+    #train_data = parse_data(train_data, categories, True)
 
     train_data = parse_data(train_data, categories)
 
