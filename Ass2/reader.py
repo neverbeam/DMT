@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+from ranking_measures import find_dcg, find_ndcg
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -62,22 +63,31 @@ def get_single_test(test_data):
     return query_test, srch_id
 
 # given a prediction ordering of likeliness that hotel was booked,
-# returns a value describing how good the prediction is
-# voor nu nog: pakt de top 5 en kijkt of die geboekt zijn en geeft er punten voor
-# later moet dit nog worden gedaan met cummulative gain etc
+# returns a value describing how good the prediction is by using nDCG
 def try_single_test(test_data, srch_id, predictions):
     query_with_booking = get_single_query(test_data, srch_id)
-    score = 0
-    for i in range(5):
-        prediction = predictions[i]
-        predicted_row = query_with_booking.loc[query_with_booking['prop_id'] == prediction]
-        if predicted_row.iloc[0]['click_bool'] == 1:
-            if predicted_row.iloc[0]['booking_bool'] == 1:
-                score += 5
-            else:
-                score += 1
+    print(predictions)
 
+    # get the real scores for the predicted ranking of the hotels
+    hypothesis = []
+    for i in range(len(predictions)):
+        real_value = 0
+        clicked = query_with_booking.iloc[i]['click_bool']
+        if clicked == 1:
+            booked = query_with_booking.iloc[i]['booking_bool']
+            if booked == 1:
+                real_value = 5
+            else:
+                real_value = 1
+        hypothesis.append(real_value)
+
+    # the best order is just the highest ranked on top
+    reference = list(reversed(sorted(hypothesis)))
+
+    # get the normalized discounted cumulative gain
+    score = find_ndcg(reference, hypothesis)
     return score
+    
 
 if __name__ == '__main__':
     train_data = pd.read_csv('training_set_VU_DM_2014_small.csv', delimiter = ',')
