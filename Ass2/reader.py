@@ -20,18 +20,15 @@ def column_to_pie(data, category):
 def parse_data(data, categories, show=False):
     for category in categories:
         # count NaNs
-        num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data[category][0], float) else 0
-        if isinstance(data[category][0],float):
+        if isinstance(data.iloc[0][category],float):
             # set all NaNs to mean
-            data[category][np.isnan(data[category])] = np.mean(data[category])
+            feat_mean = np.mean(data[category])
+            data[category] = data[category].fillna(feat_mean)
+            num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data.iloc[0][category], float) else 0
             # normalize
-            data[category] = preprocessing.normalize(data[category].reshape(1,-1),norm='l2').ravel()
+            data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
         if show:
             column_to_pie(data, category)
-    data["date_time"] = data["date_time"].apply(parse_date_time)
-
-    # data["date_time"] = data["date_time"].apply(parse_date_time)
-
     return data
 
 def stripcompetition(item):
@@ -129,11 +126,7 @@ if __name__ == '__main__':
     # all column headers
     categories = list(train_data)
     # show em
-    #train_data = parse_data(train_data, categories, True)
     train_data = parse_data(train_data, categories, False)
-
-    train_data = parse_data(train_data, categories)
-    test_data = parse_data(test_data, categories)
 
     #train_data = changecompetition(train_data, categories)
     #print (train_data["comp2_rate"])
