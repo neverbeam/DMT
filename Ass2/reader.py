@@ -95,6 +95,8 @@ if __name__ == '__main__':
     # all column headers
     categories = list(train_data)
     # show em
+    train_data = parse_data(train_data, categories, True)
+
     train_data = parse_data(train_data, categories)
 
     train_data = changecompetition(train_data, categories)
