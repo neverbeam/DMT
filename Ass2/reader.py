@@ -102,16 +102,26 @@ def try_single_test(test_data, srch_id, predictions):
 
     
 # applies a ranker on a test set and returns its score
-def test_ranker(test_data, ranker):
+def test_ranker(test_data, model):
     # loop over all queries in test set
     all_test_srch_ids = pd.unique(test_data['srch_id'])
     results = []
     for srch_id in all_test_srch_ids:
         # get a single test query
         query_test, _ = get_single_test(test_data, srch_id)
+        prop_ids_unsorted = list(query_test["prop_id"])
 
-        # predict the order of the prop_id (for now hardcoded list of numbers to test)
-        predictions = list(query_test["prop_id"]) # <- pls order this
+        # DEZE
+        # this should give a ranking number to each query+hotel row in the dataset
+        # dont think it is working yet
+        predict_result_unsorted = model.predict(query_test[["prop_starrating", "prop_location_score1",  "price_usd"]])
+
+        # if a list of unsorted predictions is given (meaning each row has a value of how good it is)
+        # here we sort the rows and return their property ids in the correct order
+        predict_result_rev_sorted, prop_ids_rev_sorted = zip(*sorted(zip(predict_result_unsorted, prop_ids_unsorted)))
+        predict_result_sorted = list(reversed(predict_result_rev_sorted))
+        prop_ids_sorted = list(reversed(prop_ids_rev_sorted))
+        predictions = prop_ids_sorted
 
         # test your prediction
         result = try_single_test(test_data, srch_id, predictions)
@@ -162,9 +172,6 @@ if __name__ == '__main__':
 
     # load the model
     model = pickle.load(open(modelname, 'rb'))
-
-    # test, srch_id = get_single_test(test_data)
-    # model.predict(test[["prop_starrating", "prop_location_score1",  "price_usd"]])
     
     # ids = test_data["srch_id"]
     # EX =  test_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
@@ -172,7 +179,6 @@ if __name__ == '__main__':
     # Epred = model.predict(EX)
     #print ('Random ranking:', metric.calc_mean_random(ids, EY))
     #print ('Our model:', metric.calc_mean(ids, EY, Epred))
-    ranker = None
 
-    test_result = test_ranker(test_data, ranker)
-    # print(test_result)
+    test_result = test_ranker(test_data, model)
+    print(test_result)
