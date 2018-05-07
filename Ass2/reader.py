@@ -1,10 +1,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 from datetime import datetime
+from sklearn import preprocessing
 from ranking_measures import find_dcg, find_ndcg
 import math
 from sklearn import preprocessing
+import pyltr
+import pickle
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -19,48 +23,29 @@ def column_to_pie(data, category):
 
 def parse_data(data, categories, show=False):
     for category in categories:
-
         # count NaNs
-
         if isinstance(data.iloc[0][category],float):
-
             # set all NaNs to mean
-
             feat_mean = np.mean(data[category])
-
             data[category] = data[category].fillna(feat_mean)
-
             num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data.iloc[0][category], float) else 0
-
             # normalize
-
             data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
-
         if show:
-
             column_to_pie(data, category)
-
     return data
-    # for category in categories:
-    #     # data[category] = data[category].astype(str)
-    #     if show:
-    #         column_to_pie(data, category)
 
-    # # data["date_time"] = data["date_time"].apply(parse_date_time)
-
-    # return data
-
-def stripcompetition(item):
-    if np.isnan(item):
-        return 0
-    else:
-        return item
+# def stripcompetition(item):
+#     if np.isnan(item):
+#         return 0
+#     else:
+#         return item
     
-def changecompetition(data, categories):
-    for category in categories[-24:-3]:
-        data[category] = data[category].apply(stripcompetition)
+# def changecompetition(data, categories):
+#     for category in categories[-24:-3]:
+#         data[category] = data[category].apply(stripcompetition)
         
-    return data
+#     return data
 
 # split the data in a learn and test set based on search ids
 def split_data(data, p=0.5):
@@ -145,20 +130,13 @@ if __name__ == '__main__':
     # show em
     train_data = parse_data(train_data, categories, False)
 
-    train_data = parse_data(train_data, categories)
-    # test_data = parse_data(test_data, categories)
-
     #train_data = changecompetition(train_data, categories)
-    #print (train_data["comp2_rate"])
-
 
     # LEARNING, PREDICTING, SCORING
-    # split the data
-    learn_data, test_data = split_data(train_data)
+    # split the data into 75% train, 25% test
+    learn_data, test_data = split_data(train_data, 0.75)
 
     # do some learn step here
-    import pyltr
-    
     metric = pyltr.metrics.NDCG(k=10)
     
     model = pyltr.models.LambdaMART(
@@ -176,7 +154,15 @@ if __name__ == '__main__':
     TX = train_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
     # when both are true, score is 5, only click is 1, nothing is 0
     TY = train_data["click_bool"] + 4*train_data["booking_bool"]
+    modelname = 'LambdaMART_small.sav'
+
+    # fit and save the model
     # model.fit(TX, TY, ids)
+    # pickle.dump(model, open(modelname, 'wb'))
+
+    # load the model
+    model = pickle.load(open(modelname, 'rb'))
+
     # test, srch_id = get_single_test(test_data)
     # model.predict(test[["prop_starrating", "prop_location_score1",  "price_usd"]])
     
