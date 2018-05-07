@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 from ranking_measures import find_dcg, find_ndcg
+import math
+from sklearn import preprocessing
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -17,13 +19,36 @@ def column_to_pie(data, category):
 
 def parse_data(data, categories, show=False):
     for category in categories:
-        # data[category] = data[category].astype(str)
+
+        # count NaNs
+
+        if isinstance(data.iloc[0][category],float):
+
+            # set all NaNs to mean
+
+            feat_mean = np.mean(data[category])
+
+            data[category] = data[category].fillna(feat_mean)
+
+            num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data.iloc[0][category], float) else 0
+
+            # normalize
+
+            data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
+
         if show:
+
             column_to_pie(data, category)
 
-    # data["date_time"] = data["date_time"].apply(parse_date_time)
-
     return data
+    # for category in categories:
+    #     # data[category] = data[category].astype(str)
+    #     if show:
+    #         column_to_pie(data, category)
+
+    # # data["date_time"] = data["date_time"].apply(parse_date_time)
+
+    # return data
 
 def stripcompetition(item):
     if np.isnan(item):
@@ -113,9 +138,7 @@ def test_ranker(test_data, ranker):
 
 if __name__ == '__main__':
     train_data = pd.read_csv('training_set_VU_DM_2014_small.csv', delimiter = ',')
-    test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
-
-    #print (train_data)
+    # test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
 
     # all column headers
     categories = list(train_data)
@@ -123,38 +146,17 @@ if __name__ == '__main__':
     train_data = parse_data(train_data, categories, False)
 
     train_data = parse_data(train_data, categories)
-    test_data = parse_data(test_data, categories)
+    # test_data = parse_data(test_data, categories)
 
     #train_data = changecompetition(train_data, categories)
     #print (train_data["comp2_rate"])
-    
-#    correlations = train_data[2:23].corr()
-#    # look at the query range
-#    for i in range(2,24):
-#        print("\n===============" + categories[i])
-#        print(train_data[2:23].corr()[categories[i]])
-
 
 
     # LEARNING, PREDICTING, SCORING
     # split the data
-    #learn_data, test_data = split_data(train_data)
+    learn_data, test_data = split_data(train_data)
 
     # do some learn step here
-    ranker = None
-    
-    # get a single test query
-#    query_test, srch_id = get_single_test(test_data)
-#
-#    # predict the order of the prop_id (for now hardcoded list of numbers to test)
-#    predictions = list(query_test["prop_id"]) # <- pls order this
-#
-#    # test your prediction
-#    result = try_single_test(test_data, srch_id, predictions)
-#
-#    print(result)
-    
-    
     import pyltr
     
     metric = pyltr.metrics.NDCG(k=10)
@@ -172,16 +174,19 @@ if __name__ == '__main__':
 
     ids = train_data["srch_id"]
     TX = train_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
-    TY = 5 * train_data["booking_bool"] + train_data["click_bool"]
-    model.fit(TX, TY, ids)
+    # when both are true, score is 5, only click is 1, nothing is 0
+    TY = train_data["click_bool"] + 4*train_data["booking_bool"]
+    # model.fit(TX, TY, ids)
+    # test, srch_id = get_single_test(test_data)
+    # model.predict(test[["prop_starrating", "prop_location_score1",  "price_usd"]])
     
-    
-    ids = test_data["srch_id"]
-    EX =  test_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
-    EY = 5 * test_data["booking_bool"] + test_data["click_bool"]
-    Epred = model.predict(EX)
+    # ids = test_data["srch_id"]
+    # EX =  test_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
+    # EY = 5 * test_data["booking_bool"] + test_data["click_bool"]
+    # Epred = model.predict(EX)
     #print ('Random ranking:', metric.calc_mean_random(ids, EY))
     #print ('Our model:', metric.calc_mean(ids, EY, Epred))
+    ranker = None
 
     test_result = test_ranker(test_data, ranker)
-    print(test_result)
+    # print(test_result)
