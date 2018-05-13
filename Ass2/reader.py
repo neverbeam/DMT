@@ -102,19 +102,23 @@ def try_single_test(test_data, srch_id, predictions):
 
     
 # applies a ranker on a test set and returns its score
-def test_ranker(test_data, model):
+def test_ranker(test_data, model, cats):
     # loop over all queries in test set
     all_test_srch_ids = pd.unique(test_data['srch_id'])
+
+    # or single value for error checking
+    # random_query, random_srch_id = get_single_test(test_data)
+    # all_test_srch_ids = [random_srch_id]
+
     results = []
+    random_results = []
     for srch_id in all_test_srch_ids:
         # get a single test query
         query_test, _ = get_single_test(test_data, srch_id)
         prop_ids_unsorted = list(query_test["prop_id"])
 
-        # DEZE
-        # this should give a ranking number to each query+hotel row in the dataset
-        # dont think it is working yet
-        predict_result_unsorted = model.predict(query_test[["prop_starrating", "prop_location_score1",  "price_usd"]])
+        # this gives a ranking number to each query+hotel row in the dataset
+        predict_result_unsorted = model.predict(query_test.as_matrix(cats))
 
         # if a list of unsorted predictions is given (meaning each row has a value of how good it is)
         # here we sort the rows and return their property ids in the correct order
@@ -125,10 +129,12 @@ def test_ranker(test_data, model):
 
         # test your prediction
         result = try_single_test(test_data, srch_id, predictions)
+        random_result = try_single_test(test_data, srch_id, prop_ids_unsorted)
 
         results.append(result)
+        random_results.append(random_result)
         
-    return sum(results)/len(results)
+    return sum(results)/len(results), sum(random_results)/len(random_results)
 
 
 if __name__ == '__main__':
@@ -160,25 +166,39 @@ if __name__ == '__main__':
     verbose=1,
     )
 
-    ids = train_data["srch_id"]
-    TX = train_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
+    # set the categories
+    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
+
+    ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
+    TX = train_data.as_matrix(columns=LM_cats)
     # when both are true, score is 5, only click is 1, nothing is 0
-    TY = train_data["click_bool"] + 4*train_data["booking_bool"]
-    modelname = 'LambdaMART_small.sav'
+    Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
+    # cast to float in order to do regression and not classification
+    Ty = Ty.astype(float).as_matrix()
+    print('TX',TX.shape,TX)
+    print('Ty',Ty.shape,Ty)
+    print('ids',ids.shape,ids)
+    modelname = 'LambdaMART_small_floats.sav'
 
     # fit and save the model
-    # model.fit(TX, TY, ids)
+    # model.fit(TX, Ty, ids)
     # pickle.dump(model, open(modelname, 'wb'))
 
     # load the model
     model = pickle.load(open(modelname, 'rb'))
     
-    # ids = test_data["srch_id"]
-    # EX =  test_data[["prop_starrating", "prop_location_score1",  "price_usd"]]
-    # EY = 5 * test_data["booking_bool"] + test_data["click_bool"]
-    # Epred = model.predict(EX)
-    #print ('Random ranking:', metric.calc_mean_random(ids, EY))
-    #print ('Our model:', metric.calc_mean(ids, EY, Epred))
+    ids = test_data.as_matrix(["srch_id"])[:,0]
+    EX =  test_data.as_matrix(columns=LM_cats)
+    Ey = test_data["click_bool"] + 4*test_data["booking_bool"]
+    Ey = Ey.astype(float).as_matrix()
+    Epred = model.predict(EX)
+    print ('Random metric ranking:', metric.calc_mean_random(ids, Ey))
+    print ('Model metric ranking:', metric.calc_mean(ids, Ey, Epred))
 
-    test_result = test_ranker(test_data, model)
-    print(test_result)
+    # single test result
+    # print(test_ranker(test_data, model, LM_cats))
+
+    test_result, random_result = test_ranker(test_data, model, LM_cats)
+    print('And here is the mistake somewhere:')
+    print('Random our ranking:', test_result)
+    print('Model total', random_result)
