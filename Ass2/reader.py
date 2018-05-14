@@ -99,8 +99,17 @@ def try_single_test(test_data, srch_id, predictions):
     # the best order is just the highest ranked on top
     reference = list(reversed(sorted(hypothesis)))
 
+    def dcg(rels):
+        score = 0.0
+        for order, rel in enumerate(rels, start=1):
+            score += float(2**rel - 1)/math.log(order+1, 2)
+        return score
+
+    def ndcg(reference, hypothesis):
+        return dcg(hypothesis)/dcg(reference)
+
     # get the normalized discounted cumulative gain
-    score = find_ndcg(reference, hypothesis)
+    score = ndcg(reference, hypothesis)
     return score
 
     
@@ -190,18 +199,14 @@ if __name__ == '__main__':
     # load the model
     model = pickle.load(open(modelname, 'rb'))
     
-    ids = test_data.as_matrix(["srch_id"])[:,0]
-    EX =  test_data.as_matrix(columns=LM_cats)
-    Ey = test_data["click_bool"] + 4*test_data["booking_bool"]
-    Ey = Ey.astype(float).as_matrix()
-    Epred = model.predict(EX)
-    print ('Random metric ranking:', metric.calc_mean_random(ids, Ey))
-    print ('Model metric ranking:', metric.calc_mean(ids, Ey, Epred))
-
-    # single test result
-    # print(test_ranker(test_data, model, LM_cats))
+    # ids = test_data.as_matrix(["srch_id"])[:,0]
+    # EX =  test_data.as_matrix(columns=LM_cats)
+    # Ey = test_data["click_bool"] + 4*test_data["booking_bool"]
+    # Ey = Ey.astype(float).as_matrix()
+    # Epred = model.predict(EX)
+    # print ('Random metric ranking:', metric.calc_mean_random(ids, Ey))
+    # print ('Model metric ranking:', metric.calc_mean(ids, Ey, Epred))
 
     test_result, random_result = test_ranker(test_data, model, LM_cats)
-    print('And here is the mistake somewhere:')
     print('Random our ranking:', random_result)
     print('Model total', test_result)
