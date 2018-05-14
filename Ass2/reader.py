@@ -83,14 +83,17 @@ def try_single_test(test_data, srch_id, predictions):
     # get the real scores for the predicted ranking of the hotels
     hypothesis = []
     for i in range(len(predictions)):
-        real_value = 0
-        clicked = query_with_booking.iloc[i]['click_bool']
+        # get the query rows one by one in order of predictions
+        predicted_row = query_with_booking.loc[query_with_booking['prop_id'] == predictions[i]]
+
+        real_value = 0.
+        clicked = predicted_row.iloc[0]['click_bool']
         if clicked == 1:
-            booked = query_with_booking.iloc[i]['booking_bool']
+            booked = predicted_row.iloc[0]['booking_bool']
             if booked == 1:
-                real_value = 5
+                real_value = 5.
             else:
-                real_value = 1
+                real_value = 1.
         hypothesis.append(real_value)
 
     # the best order is just the highest ranked on top
@@ -200,5 +203,5 @@ if __name__ == '__main__':
 
     test_result, random_result = test_ranker(test_data, model, LM_cats)
     print('And here is the mistake somewhere:')
-    print('Random our ranking:', test_result)
-    print('Model total', random_result)
+    print('Random our ranking:', random_result)
+    print('Model total', test_result)
