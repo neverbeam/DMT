@@ -61,7 +61,7 @@ def find_dcg(element_list):
     """
     score = 0.0
     for order, rank in enumerate(element_list):
-        score += float(rank)/math.log((order+2))
+        score += float(2**rank - 1)/math.log((order+2),2.0)
     return score
 
 
