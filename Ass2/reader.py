@@ -9,6 +9,7 @@ import math
 from sklearn import preprocessing
 import pyltr
 import pickle
+import time
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -35,17 +36,26 @@ def parse_data(data, categories, show=False):
             column_to_pie(data, category)
     return data
 
-# def stripcompetition(item):
-#     if np.isnan(item):
-#         return 0
-#     else:
-#         return item
-    
-# def changecompetition(data, categories):
-#     for category in categories[-24:-3]:
-#         data[category] = data[category].apply(stripcompetition)
-        
-#     return data
+# adds new feature columns to a dataset
+# returns the names of added columns
+def add_features(data):
+    new_columns = []
+
+    # location times price
+    data['loc_price'] = data['prop_location_score1'] * data['price_usd']
+    new_columns.append('loc_price')
+    # location times starrating
+    data['loc_star'] = data['prop_location_score1'] * data['prop_starrating']
+    new_columns.append('loc_star')
+    # starrating times price
+    data['star_price'] = data['price_usd'] * data['prop_starrating']
+    new_columns.append('star_price')
+    # starrating * price * location
+    data['star_price_loc'] = data['price_usd'] * data['prop_starrating'] * data['loc_price']
+    new_columns.append('star_price_loc')
+
+    return new_columns
+
 
 # split the data in a learn and test set based on search ids
 def split_data(data, p=0.5):
@@ -150,15 +160,15 @@ def test_ranker(test_data, model, cats):
 
 
 if __name__ == '__main__':
-    train_data = pd.read_csv('training_set_VU_DM_2014_small.csv', delimiter = ',')
+    train_data = pd.read_csv('training_set_VU_DM_2014_medium.csv', delimiter = ',')
     # test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
 
     # all column headers
     categories = list(train_data)
     # show em
     train_data = parse_data(train_data, categories, False)
-
-    #train_data = changecompetition(train_data, categories)
+    # add some additional features
+    new_features = add_features(train_data)
 
     # LEARNING, PREDICTING, SCORING
     # split the data into 75% train, 25% test
@@ -179,21 +189,28 @@ if __name__ == '__main__':
     )
 
     # set the categories
+    all_usable_cats = ['site_id', 'prop_starrating', 'prop_review_score', 
+            'prop_brand_bool', 'prop_location_score1', 'prop_location_score2', 
+            'prop_log_historical_price', 'price_usd', 'promotion_flag', 
+            'srch_length_of_stay', 'srch_booking_window', 'srch_adults_count', 
+            'srch_children_count', 'srch_room_count', 'srch_saturday_night_bool', 
+            'orig_destination_distance', 'random_bool']
+
     LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
 
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
-    TX = train_data.as_matrix(columns=LM_cats)
+    TX = train_data.as_matrix(columns=all_usable_cats + new_features)
     # when both are true, score is 5, only click is 1, nothing is 0
     Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
     # cast to float in order to do regression and not classification
     Ty = Ty.astype(float).as_matrix()
-    print('TX',TX.shape,TX)
-    print('Ty',Ty.shape,Ty)
-    print('ids',ids.shape,ids)
-    modelname = 'LambdaMART_small_floats.sav'
+    modelname = 'LambdaMART_medium_all.sav'
 
     # fit and save the model
+    # start_fit = time.time()
     # model.fit(TX, Ty, ids)
+    # end_fit = time.time()
+    # print('Time to fit:', (end_fit-start_fit)/60.)
     # pickle.dump(model, open(modelname, 'wb'))
 
     # load the model
@@ -207,6 +224,6 @@ if __name__ == '__main__':
     # print ('Random metric ranking:', metric.calc_mean_random(ids, Ey))
     # print ('Model metric ranking:', metric.calc_mean(ids, Ey, Epred))
 
-    test_result, random_result = test_ranker(test_data, model, LM_cats)
+    test_result, random_result = test_ranker(test_data, model, all_usable_cats)
     print('Random our ranking:', random_result)
     print('Model total', test_result)
