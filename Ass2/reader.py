@@ -22,35 +22,55 @@ def column_to_pie(data, category):
     plt.show()
 
 def parse_data(data, categories, show=False):
+    """ Parse all the data to set NaNs to mean. """
     for category in categories:
         # count NaNs
         if isinstance(data.iloc[0][category],float):
             # set all NaNs to mean
-            feat_mean = np.mean(data[category])
-            data[category] = data[category].fillna(feat_mean)
-            num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data.iloc[0][category], float) else 0
-            # normalize
-            data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
+            data = data.fillna(data.mean())
         if show:
             column_to_pie(data, category)
     return data
 
-# def stripcompetition(item):
-#     if np.isnan(item):
-#         return 0
-#     else:
-#         return item
-    
-# def changecompetition(data, categories):
-#     for category in categories[-24:-3]:
-#         data[category] = data[category].apply(stripcompetition)
+def normalize(data, categories):
+    """Normalize all the column that contain floats. """
+    for category in categories:
+        if isinstance(data.iloc[0][category],float):
+            data[category] = data[category]/ data[category].max()
         
-#     return data
+    return data
 
-# split the data in a learn and test set based on search ids
+
+def update_comprate(train_data):
+    """Set any weird competator data to 0. """
+    for i in range(1,9):
+        a = ("comp{}_rate_percent_diff".format(i))
+        train_data[train_data[a] > 300 ] = 0
+    
+    return train_data
+    
+def average_competition(data):
+    """ Average all the competition data. """
+    average = data["comp1_rate_percent_diff"]
+
+    for i in range(2,9):
+        a = ("comp{}_rate_percent_diff".format(i))
+        b = ("comp{}_rate".format(i))
+        # The rate (positive/negative) * difference
+        average += data[a] * data[b]
+
+    return average/8
+
+def price_difference(data):
+    """Create a column with difference between current and historical price. """
+    price = np.log(data["price_usd"])
+    return price - data["prop_log_historical_price"]
+
+    
+
 def split_data(data, p=0.5):
     """Split the data into a learn and test set."""
-    # get all different search ids and shuffle them
+    # Get all different search ids and shuffle them.
     srch_ids = data["srch_id"].unique()
     np.random.shuffle(srch_ids)
 
@@ -61,13 +81,12 @@ def split_data(data, p=0.5):
 
     return learn, test
 
-
-# returns rows where the search id is the one given
 def get_single_query(data, srch_id):
+    """ returns rows where the search id is the one given"""
     return data.loc[data['srch_id'] == srch_id]
 
-# returns the rows without bookings of a randomly picked query_id
 def get_single_test(test_data, srch_id=None):
+    """returns the rows without bookings of a randomly picked query_id. """
     if srch_id == None:
         # get a random srch id
         srch_id = test_data.sample().iloc[0]['srch_id'] #just get that 1 value
@@ -148,6 +167,10 @@ if __name__ == '__main__':
     categories = list(train_data)
     # show em
     train_data = parse_data(train_data, categories, False)
+    train_data = update_comprate(train_data)
+    train_data = normalize(train_data, categories)
+    train_data["comp_average"] = average_competition(train_data)
+    train_data["price_diff"] = price_difference(train_data)
 
     #train_data = changecompetition(train_data, categories)
 
@@ -170,7 +193,7 @@ if __name__ == '__main__':
     )
 
     # set the categories
-    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
+    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd", "prop_brand_bool"]
 
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
     TX = train_data.as_matrix(columns=LM_cats)
@@ -184,8 +207,8 @@ if __name__ == '__main__':
     modelname = 'LambdaMART_small_floats.sav'
 
     # fit and save the model
-    # model.fit(TX, Ty, ids)
-    # pickle.dump(model, open(modelname, 'wb'))
+    #model.fit(TX, Ty, ids)
+    #pickle.dump(model, open(modelname, 'wb'))
 
     # load the model
     model = pickle.load(open(modelname, 'rb'))
