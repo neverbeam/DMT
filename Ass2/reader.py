@@ -22,18 +22,39 @@ def column_to_pie(data, category):
     plt.show()
 
 def parse_data(data, categories, show=False):
+    # add features:
+    star_diff = [(np.log(i.price_usd) - i.prop_log_historical_price ) if i.price_usd > 0 
+                and i.prop_log_historical_price > 0 else 0 for j,i in data.iterrows()]
+    data['star_diff'] = pd.Series(star_diff)
+    
+    price_diff = [(i.prop_starrating - i.visitor_hist_starrating ) if i.prop_starrating > 0 
+                and i.visitor_hist_starrating > 0 else 0 for j,i in data.iterrows()]
+    
+    data['price_diff'] = pd.Series(price_diff)
+
     for category in categories:
         # count NaNs
         if isinstance(data.iloc[0][category],float):
             # set all NaNs to mean
             feat_mean = np.mean(data[category])
             data[category] = data[category].fillna(feat_mean)
-            num_nan = len([d for d in data[category] if math.isnan(d)]) if isinstance(data.iloc[0][category], float) else 0
+            num_nan = len([d for d in data[category] if math.isnan(d)])
             # normalize
             data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
         if show:
             column_to_pie(data, category)
     return data
+
+    
+def plot_importance(data, category):
+    if isinstance(data.iloc[0][category],float) or isinstance(data.iloc[0][category],np.int64):
+        booked = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 1])
+        clicked = np.mean([i[category] for j,i in data.iterrows() if i.click_bool == 1])
+        neither = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 0 and i.click_bool == 0])
+        plt.bar([1,2,3], [neither, clicked, booked], tick_label=['neither', 'clicked','booked'])
+        plt.title(category)
+        plt.show()
+
 
 # def stripcompetition(item):
 #     if np.isnan(item):
@@ -155,9 +176,11 @@ if __name__ == '__main__':
 
     # all column headers
     categories = list(train_data)
+
     # show em
     train_data = parse_data(train_data, categories, False)
-
+    
+    
     #train_data = changecompetition(train_data, categories)
 
     # LEARNING, PREDICTING, SCORING
@@ -179,22 +202,22 @@ if __name__ == '__main__':
     )
 
     # set the categories
-    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
-
+    LM_cats = ["star_diff", "prop_location_score2",  "price_diff", "promotion_flag", "random_bool"]
+    #LM_cats = ["prop_starrating", "prop_location_score2",  "price_usd", "promotion_flag"]
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
     TX = train_data.as_matrix(columns=LM_cats)
     # when both are true, score is 5, only click is 1, nothing is 0
     Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
     # cast to float in order to do regression and not classification
     Ty = Ty.astype(float).as_matrix()
-    print('TX',TX.shape,TX)
-    print('Ty',Ty.shape,Ty)
-    print('ids',ids.shape,ids)
+    # print('TX',TX.shape,TX)
+    # print('Ty',Ty.shape,Ty)
+    # print('ids',ids.shape,ids)
     modelname = 'LambdaMART_small_floats.sav'
 
     # fit and save the model
-    # model.fit(TX, Ty, ids)
-    # pickle.dump(model, open(modelname, 'wb'))
+    model.fit(TX, Ty, ids)
+    pickle.dump(model, open(modelname, 'wb'))
 
     # load the model
     model = pickle.load(open(modelname, 'rb'))
