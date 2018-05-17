@@ -9,6 +9,7 @@ import math
 from sklearn import preprocessing
 import pyltr
 import pickle
+import time
 
 def parse_date_time(value):
     new_val = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
@@ -32,6 +33,8 @@ def parse_data(data, categories, show=False):
     
     data['price_diff'] = pd.Series(price_diff)
 
+
+    """ Parse all the data to set NaNs to mean. """
     for category in categories:
         # count NaNs
         if isinstance(data.iloc[0][category],float):
@@ -41,9 +44,13 @@ def parse_data(data, categories, show=False):
             num_nan = len([d for d in data[category] if math.isnan(d)])
             # normalize
             data[category] = preprocessing.normalize(data[category].values.reshape(1,-1),norm='l2').ravel()
+
+            data = data.fillna(data.mean())
+
         if show:
             column_to_pie(data, category)
     return data
+
 
     
 def plot_importance(data, category):
@@ -65,13 +72,65 @@ def plot_importance(data, category):
 # def changecompetition(data, categories):
 #     for category in categories[-24:-3]:
 #         data[category] = data[category].apply(stripcompetition)
-        
-#     return data
 
-# split the data in a learn and test set based on search ids
+# adds new feature columns to a dataset
+# returns the names of added columns
+def add_features(data):
+    new_columns = []
+
+    # location times price
+    data['loc_price'] = data['prop_location_score1'] * data['price_usd']
+    new_columns.append('loc_price')
+    # location times starrating
+    data['loc_star'] = data['prop_location_score1'] * data['prop_starrating']
+    new_columns.append('loc_star')
+    # starrating times price
+    data['star_price'] = data['price_usd'] * data['prop_starrating']
+    new_columns.append('star_price')
+    # starrating * price * location
+    data['star_price_loc'] = data['price_usd'] * data['prop_starrating'] * data['loc_price']
+    new_columns.append('star_price_loc')
+
+    return new_columns
+
+def normalize(data, categories):
+    """Normalize all the column that contain floats. """
+    for category in categories:
+        if isinstance(data.iloc[0][category],float):
+            data[category] = data[category]/ data[category].max()
+
+        
+    return data
+
+
+def update_comprate(train_data):
+    """Set any weird competator data to 0. """
+    for i in range(1,9):
+        a = ("comp{}_rate_percent_diff".format(i))
+        train_data[train_data[a] > 300 ] = 0
+    
+    return train_data
+    
+def average_competition(data):
+    """ Average all the competition data. """
+    average = data["comp1_rate_percent_diff"]
+
+    for i in range(2,9):
+        a = ("comp{}_rate_percent_diff".format(i))
+        b = ("comp{}_rate".format(i))
+        # The rate (positive/negative) * difference
+        average += data[a] * data[b]
+
+    return average/8
+
+def price_difference(data):
+    """Create a column with difference between current and historical price. """
+    price = np.log(data["price_usd"])
+    return price - data["prop_log_historical_price"]
+
 def split_data(data, p=0.5):
     """Split the data into a learn and test set."""
-    # get all different search ids and shuffle them
+    # Get all different search ids and shuffle them.
     srch_ids = data["srch_id"].unique()
     np.random.shuffle(srch_ids)
 
@@ -82,13 +141,12 @@ def split_data(data, p=0.5):
 
     return learn, test
 
-
-# returns rows where the search id is the one given
 def get_single_query(data, srch_id):
+    """ returns rows where the search id is the one given"""
     return data.loc[data['srch_id'] == srch_id]
 
-# returns the rows without bookings of a randomly picked query_id
 def get_single_test(test_data, srch_id=None):
+    """returns the rows without bookings of a randomly picked query_id. """
     if srch_id == None:
         # get a random srch id
         srch_id = test_data.sample().iloc[0]['srch_id'] #just get that 1 value
@@ -171,7 +229,7 @@ def test_ranker(test_data, model, cats):
 
 
 if __name__ == '__main__':
-    train_data = pd.read_csv('training_set_VU_DM_2014_small.csv', delimiter = ',')
+    train_data = pd.read_csv('training_set_VU_DM_2014_medium.csv', delimiter = ',')
     # test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
 
     # all column headers
@@ -179,9 +237,18 @@ if __name__ == '__main__':
 
     # show em
     train_data = parse_data(train_data, categories, False)
+
     
     
     #train_data = changecompetition(train_data, categories)
+
+    # add some additional features
+    new_features = add_features(train_data)
+    train_data = update_comprate(train_data)
+    train_data = normalize(train_data, categories)
+    train_data["comp_average"] = average_competition(train_data)
+    train_data["price_diff"] = price_difference(train_data)
+
 
     # LEARNING, PREDICTING, SCORING
     # split the data into 75% train, 25% test
@@ -202,14 +269,27 @@ if __name__ == '__main__':
     )
 
     # set the categories
+
     LM_cats = ["star_diff", "prop_location_score2",  "price_diff", "promotion_flag", "random_bool"]
     #LM_cats = ["prop_starrating", "prop_location_score2",  "price_usd", "promotion_flag"]
+
+    all_usable_cats = ['site_id', 'prop_starrating', 'prop_review_score', 
+            'prop_brand_bool', 'prop_location_score1', 'prop_location_score2', 
+            'prop_log_historical_price', 'price_usd', 'promotion_flag', 
+            'srch_length_of_stay', 'srch_booking_window', 'srch_adults_count', 
+            'srch_children_count', 'srch_room_count', 'srch_saturday_night_bool', 
+            'orig_destination_distance', 'random_bool']
+
+    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
+
+
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
-    TX = train_data.as_matrix(columns=LM_cats)
+    TX = train_data.as_matrix(columns=all_usable_cats + new_features)
     # when both are true, score is 5, only click is 1, nothing is 0
     Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
     # cast to float in order to do regression and not classification
     Ty = Ty.astype(float).as_matrix()
+
     # print('TX',TX.shape,TX)
     # print('Ty',Ty.shape,Ty)
     # print('ids',ids.shape,ids)
@@ -219,17 +299,19 @@ if __name__ == '__main__':
     model.fit(TX, Ty, ids)
     pickle.dump(model, open(modelname, 'wb'))
 
+    modelname = 'LambdaMART_medium_all.sav'
+
+    # fit and save the model
+    # start_fit = time.time()
+    # model.fit(TX, Ty, ids)
+    # end_fit = time.time()
+    # print('Time to fit:', (end_fit-start_fit)/60.)
+    # pickle.dump(model, open(modelname, 'wb'))
+
+
     # load the model
     model = pickle.load(open(modelname, 'rb'))
-    
-    # ids = test_data.as_matrix(["srch_id"])[:,0]
-    # EX =  test_data.as_matrix(columns=LM_cats)
-    # Ey = test_data["click_bool"] + 4*test_data["booking_bool"]
-    # Ey = Ey.astype(float).as_matrix()
-    # Epred = model.predict(EX)
-    # print ('Random metric ranking:', metric.calc_mean_random(ids, Ey))
-    # print ('Model metric ranking:', metric.calc_mean(ids, Ey, Epred))
 
-    test_result, random_result = test_ranker(test_data, model, LM_cats)
+    test_result, random_result = test_ranker(test_data, model, all_usable_cats)
     print('Random our ranking:', random_result)
     print('Model total', test_result)
