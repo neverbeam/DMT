@@ -51,6 +51,14 @@ def add_features(data):
     data['star_price_loc'] = data['price_usd'] * data['prop_starrating'] * data['loc_price']
     new_columns.append('star_price_loc')
 
+    # competitor average
+    train_data["comp_average"] = average_competition(train_data)
+    new_columns.append("comp_average")
+
+    # price difference
+    train_data["price_diff"] = price_difference(train_data)
+    new_columns.append("price_diff")
+
     return new_columns
 
 def normalize(data, categories):
@@ -199,8 +207,6 @@ if __name__ == '__main__':
     new_features = add_features(train_data)
     train_data = update_comprate(train_data)
     train_data = normalize(train_data, categories)
-    train_data["comp_average"] = average_competition(train_data)
-    train_data["price_diff"] = price_difference(train_data)
 
     # LEARNING, PREDICTING, SCORING
     # split the data into 75% train, 25% test
@@ -226,12 +232,12 @@ if __name__ == '__main__':
             'prop_log_historical_price', 'price_usd', 'promotion_flag', 
             'srch_length_of_stay', 'srch_booking_window', 'srch_adults_count', 
             'srch_children_count', 'srch_room_count', 'srch_saturday_night_bool', 
-            'orig_destination_distance', 'random_bool']
+            'orig_destination_distance', 'random_bool']  + new_features
 
     LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
 
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
-    TX = train_data.as_matrix(columns=all_usable_cats + new_features)
+    TX = train_data.as_matrix(columns=all_usable_cats)
     # when both are true, score is 5, only click is 1, nothing is 0
     Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
     # cast to float in order to do regression and not classification
