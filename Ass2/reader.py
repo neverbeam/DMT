@@ -22,18 +22,16 @@ def column_to_pie(data, category):
     plt.title(category)
     plt.show()
 
+def plot_importance(data, category):
+    if isinstance(data.iloc[0][category],float) or isinstance(data.iloc[0][category],np.int64):
+        booked = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 1])
+        clicked = np.mean([i[category] for j,i in data.iterrows() if i.click_bool == 1])
+        neither = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 0 and i.click_bool == 0])
+        plt.bar([1,2,3], [neither, clicked, booked], tick_label=['neither', 'clicked','booked'])
+        plt.title(category)
+        plt.show()
+
 def parse_data(data, categories, show=False):
-    # add features:
-    star_diff = [(np.log(i.price_usd) - i.prop_log_historical_price ) if i.price_usd > 0 
-                and i.prop_log_historical_price > 0 else 0 for j,i in data.iterrows()]
-    data['star_diff'] = pd.Series(star_diff)
-    
-    price_diff = [(i.prop_starrating - i.visitor_hist_starrating ) if i.prop_starrating > 0 
-                and i.visitor_hist_starrating > 0 else 0 for j,i in data.iterrows()]
-    
-    data['price_diff'] = pd.Series(price_diff)
-
-
     """ Parse all the data to set NaNs to mean. """
     for category in categories:
         # count NaNs
@@ -52,26 +50,14 @@ def parse_data(data, categories, show=False):
     return data
 
 
+def update_comprate(train_data):
+    """Set any weird competator data to 0. """
+    for i in range(1,9):
+        a = ("comp{}_rate_percent_diff".format(i))
+        train_data[train_data[a] > 300 ] = 0
     
-def plot_importance(data, category):
-    if isinstance(data.iloc[0][category],float) or isinstance(data.iloc[0][category],np.int64):
-        booked = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 1])
-        clicked = np.mean([i[category] for j,i in data.iterrows() if i.click_bool == 1])
-        neither = np.mean([i[category] for j,i in data.iterrows() if i.booking_bool == 0 and i.click_bool == 0])
-        plt.bar([1,2,3], [neither, clicked, booked], tick_label=['neither', 'clicked','booked'])
-        plt.title(category)
-        plt.show()
+    return train_data
 
-
-# def stripcompetition(item):
-#     if np.isnan(item):
-#         return 0
-#     else:
-#         return item
-    
-# def changecompetition(data, categories):
-#     for category in categories[-24:-3]:
-#         data[category] = data[category].apply(stripcompetition)
 
 # adds new feature columns to a dataset
 # returns the names of added columns
@@ -92,14 +78,23 @@ def add_features(data):
     new_columns.append('star_price_loc')
 
     # competitor average
-    train_data["comp_average"] = average_competition(train_data)
+    data["comp_average"] = average_competition(data)
     new_columns.append("comp_average")
 
     # price difference
-    train_data["price_diff"] = price_difference(train_data)
+    price_diff = [(np.log(i.price_usd) - i.prop_log_historical_price ) if i.price_usd > 0 
+                and i.prop_log_historical_price > 0 else 0 for j,i in data.iterrows()]
+    data['price_diff'] = pd.Series(price_diff)
     new_columns.append("price_diff")
+    
+    # star difference
+    star_diff = [(i.prop_starrating - i.visitor_hist_starrating ) if i.prop_starrating > 0 
+                and i.visitor_hist_starrating > 0 else 0 for j,i in data.iterrows()]
+    data['star_diff'] = pd.Series(star_diff)
+    new_columns.append("star_diff")
 
     return new_columns
+
 
 def normalize(data, categories):
     """Normalize all the column that contain floats. """
@@ -107,17 +102,8 @@ def normalize(data, categories):
         if isinstance(data.iloc[0][category],float):
             data[category] = data[category]/ data[category].max()
 
-        
     return data
 
-
-def update_comprate(train_data):
-    """Set any weird competator data to 0. """
-    for i in range(1,9):
-        a = ("comp{}_rate_percent_diff".format(i))
-        train_data[train_data[a] > 300 ] = 0
-    
-    return train_data
     
 def average_competition(data):
     """ Average all the competition data. """
@@ -131,10 +117,39 @@ def average_competition(data):
 
     return average/8
 
-def price_difference(data):
-    """Create a column with difference between current and historical price. """
-    price = np.log(data["price_usd"])
-    return price - data["prop_log_historical_price"]
+
+def make_dataframe(name, save_as):
+    """ Makes a dataframe, thats parsed, has added features and is normalized.
+        Returns the df, and has the df saved under the given name
+        Also prints the new features
+    """
+    data = pd.read_csv(name, delimiter = ',')
+
+    # all column headers
+    start_cats = list(data)
+
+    # change nasty data fields
+    data = parse_data(data, start_cats, False)
+    # update the competitor rate
+    data = update_comprate(data)
+
+    # normalize everything at the end of data parsing
+    data = normalize(data, start_cats)
+
+    # add some additional features
+    new_features = add_features(data)
+    print("Features added to data: ", new_features)
+
+    # save the dataframe
+    pickle.dump(data, open(save_as, 'wb'))
+
+    return data
+
+
+def get_dataframe(saved_as):
+    """ Gets a usable dataframe from a pickle file. """
+    return pickle.load(open(saved_as, 'rb'))
+
 
 def split_data(data, p=0.5):
     """Split the data into a learn and test set."""
@@ -237,24 +252,11 @@ def test_ranker(test_data, model, cats):
 
 
 if __name__ == '__main__':
-    train_data = pd.read_csv('training_set_VU_DM_2014_medium.csv', delimiter = ',')
-    # test_data = pd.read_csv('test_set_VU_DM_2014_small.csv', delimiter = ',')
-
-    # all column headers
-    categories = list(train_data)
-
-    # show em
-    train_data = parse_data(train_data, categories, False)
-
-    
-    
-    #train_data = changecompetition(train_data, categories)
-
-    # add some additional features
-    new_features = add_features(train_data)
-    train_data = update_comprate(train_data)
-    train_data = normalize(train_data, categories)
-
+    name = "training_set_VU_DM_2014_small"
+    # either do all the parsing or get the parsed one
+    train_data = make_dataframe(name + '.csv', name + '_df.sav')
+    # train_data = get_dataframe(name + '_df.sav')
+    new_features = ['loc_price', 'loc_star', 'star_price', 'star_price_loc', 'comp_average', 'price_diff', 'star_diff']
 
     # LEARNING, PREDICTING, SCORING
     # split the data into 75% train, 25% test
@@ -276,17 +278,16 @@ if __name__ == '__main__':
 
     # set the categories
 
-    LM_cats = ["star_diff", "prop_location_score2",  "price_diff", "promotion_flag", "random_bool"]
+    # LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
     #LM_cats = ["prop_starrating", "prop_location_score2",  "price_usd", "promotion_flag"]
+    # LM_cats = ["star_diff", "prop_location_score2",  "price_diff", "promotion_flag", "random_bool"]
 
     all_usable_cats = ['site_id', 'prop_starrating', 'prop_review_score', 
             'prop_brand_bool', 'prop_location_score1', 'prop_location_score2', 
             'prop_log_historical_price', 'price_usd', 'promotion_flag', 
             'srch_length_of_stay', 'srch_booking_window', 'srch_adults_count', 
             'srch_children_count', 'srch_room_count', 'srch_saturday_night_bool', 
-            'orig_destination_distance', 'random_bool']  + new_features
-
-    LM_cats = ["prop_starrating", "prop_location_score1",  "price_usd"]
+            'orig_destination_distance', 'random_bool'] + new_features
 
 
     ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
@@ -302,18 +303,11 @@ if __name__ == '__main__':
     modelname = 'LambdaMART_small_floats.sav'
 
     # fit and save the model
+    start_fit = time.time()
     model.fit(TX, Ty, ids)
+    end_fit = time.time()
+    print('Time to fit:', (end_fit-start_fit)/60.)
     pickle.dump(model, open(modelname, 'wb'))
-
-    modelname = 'LambdaMART_medium_all.sav'
-
-    # fit and save the model
-    # start_fit = time.time()
-    # model.fit(TX, Ty, ids)
-    # end_fit = time.time()
-    # print('Time to fit:', (end_fit-start_fit)/60.)
-    # pickle.dump(model, open(modelname, 'wb'))
-
 
     # load the model
     model = pickle.load(open(modelname, 'rb'))
