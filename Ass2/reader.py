@@ -151,6 +151,52 @@ def get_dataframe(saved_as):
     return pickle.load(open(saved_as, 'rb'))
 
 
+
+
+def make_model(model_name, learn_data, cats, model=None):
+    """ Learn and save the model on the learn set on the given categories. """
+    
+    # initialize it
+    if model == None:
+        metric = pyltr.metrics.NDCG(k=10)
+
+        model = pyltr.models.LambdaMART(
+        metric=metric,
+        n_estimators=1000,
+        learning_rate=0.02,
+        max_features=0.5,
+        query_subsample=0.5,
+        max_leaf_nodes=10,
+        min_samples_leaf=64,
+        verbose=1,
+        )
+
+    ids = learn_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
+    TX = learn_data.as_matrix(columns=cats)
+    # when both are true, score is 5, only click is 1, nothing is 0
+    Ty = learn_data["click_bool"] + 4*learn_data["booking_bool"]
+    # cast to float in order to do regression and not classification
+    Ty = Ty.astype(float).as_matrix()
+
+    # print('TX',TX.shape,TX)
+    # print('Ty',Ty.shape,Ty)
+    # print('ids',ids.shape,ids)
+
+    # fit and save the model
+    start_fit = time.time()
+    model.fit(TX, Ty, ids)
+    end_fit = time.time()
+    print('Time to fit:', (end_fit-start_fit)/60.)
+    pickle.dump(model, open(model_name, 'wb'))
+
+    return model
+
+def get_model(model_name):
+    """ Read the previously learned model from a pickle object. """
+    return pickle.load(open(modelname, 'rb'))
+
+
+
 def split_data(data, p=0.5):
     """Split the data into a learn and test set."""
     # Get all different search ids and shuffle them.
@@ -252,29 +298,18 @@ def test_ranker(test_data, model, cats):
 
 
 if __name__ == '__main__':
-    name = "training_set_VU_DM_2014_small"
+    # make sure same sizes are used here
+    data_name = "training_set_VU_DM_2014_small"
+    model_name = 'LambdaMART_small_floats.sav'
+
     # either do all the parsing or get the parsed one
-    train_data = make_dataframe(name + '.csv', name + '_df.sav')
-    # train_data = get_dataframe(name + '_df.sav')
+    train_data = make_dataframe(data_name + '.csv', data_name + '_df.sav')
+    # train_data = get_dataframe(data_name + '_df.sav')
     new_features = ['loc_price', 'loc_star', 'star_price', 'star_price_loc', 'comp_average', 'price_diff', 'star_diff']
 
     # LEARNING, PREDICTING, SCORING
     # split the data into 75% train, 25% test
     learn_data, test_data = split_data(train_data, 0.75)
-
-    # do some learn step here
-    metric = pyltr.metrics.NDCG(k=10)
-    
-    model = pyltr.models.LambdaMART(
-    metric=metric,
-    n_estimators=1000,
-    learning_rate=0.02,
-    max_features=0.5,
-    query_subsample=0.5,
-    max_leaf_nodes=10,
-    min_samples_leaf=64,
-    verbose=1,
-    )
 
     # set the categories
 
@@ -289,28 +324,11 @@ if __name__ == '__main__':
             'srch_children_count', 'srch_room_count', 'srch_saturday_night_bool', 
             'orig_destination_distance', 'random_bool'] + new_features
 
-
-    ids = train_data.as_matrix(["srch_id"])[:,0] #maybe should be strings...
-    TX = train_data.as_matrix(columns=all_usable_cats)
-    # when both are true, score is 5, only click is 1, nothing is 0
-    Ty = train_data["click_bool"] + 4*train_data["booking_bool"]
-    # cast to float in order to do regression and not classification
-    Ty = Ty.astype(float).as_matrix()
-
-    # print('TX',TX.shape,TX)
-    # print('Ty',Ty.shape,Ty)
-    # print('ids',ids.shape,ids)
-    modelname = 'LambdaMART_small_floats.sav'
-
-    # fit and save the model
-    start_fit = time.time()
-    model.fit(TX, Ty, ids)
-    end_fit = time.time()
-    print('Time to fit:', (end_fit-start_fit)/60.)
-    pickle.dump(model, open(modelname, 'wb'))
+    # learn and save the model
+    model = make_model(model_name, learn_data, all_usable_cats)
 
     # load the model
-    model = pickle.load(open(modelname, 'rb'))
+    # model = get_model(model_name)
 
     test_result, random_result = test_ranker(test_data, model, all_usable_cats)
     print('Random our ranking:', random_result)
